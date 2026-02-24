@@ -3,7 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MédiSoft Nutrition Pro - Aesthetic Edition</title>
+    <title>MédiSoft Nutrition Pro - Cloud Sync Edition</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;600;700&family=Playfair+Display:ital,wght@0,700;1,500&family=Cinzel:wght@600&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -221,47 +225,108 @@
 </div>
 
 <script>
+    // --- تكوين المزامنة السحابية Firebase ---
+    const firebaseConfig = {
+        apiKey: "AIzaSyDBYw9gZW-8uvZo6s3DGJhdWEInyPxvNn8",
+        authDomain: "myclinic-c1ae8.firebaseapp.com",
+        databaseURL: "https://myclinic-c1ae8-default-rtdb.firebaseio.com",
+        projectId: "myclinic-c1ae8",
+        storageBucket: "myclinic-c1ae8.firebasestorage.app",
+        messagingSenderId: "195782279123",
+        appId: "1:195782279123:web:03ee3007c35679cbbf7926"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
     let config = JSON.parse(localStorage.getItem('clinic_config_v5')) || { clinic: "NUTRITION CLINIC", doctor: "DR. NOM", spec: "NUTRITIONNISTE", address: "ADRESSE", phone: "000000", logo: "" };
-    let state = { waiting: [], current: null, currentMeds: [], pendingPayments: JSON.parse(localStorage.getItem('pending_payments')) || [], history: JSON.parse(localStorage.getItem('clinic_history_v12')) || [] };
+    let state = { waiting: [], current: null, currentMeds: [], pendingPayments: [], history: [] };
+
+    // ميزة المزامنة اللحظية مع السحابة
+    db.ref('clinic_data').on('value', (snap) => {
+        if (snap.exists()) {
+            const cloudData = snap.val();
+            state.waiting = cloudData.waiting || [];
+            state.current = cloudData.current || null;
+            state.pendingPayments = cloudData.pendingPayments || [];
+            state.history = cloudData.history ? Object.values(cloudData.history) : [];
+            updateUI();
+        }
+    });
 
     window.onload = () => {
         ['clinic', 'doctor', 'spec', 'address', 'phone'].forEach(k => { if(document.getElementById('conf-'+k)) document.getElementById('conf-'+k).value = config[k] || ""; });
-        updateCaisseBadge(); refreshFinanceUI(); updateStatusUI();
+        updateStatusUI();
     };
 
-    // ميزة تصدير البيانات (Export)
-    function exportData() {
-        const data = {
-            config: config,
-            history: state.history,
-            pendingPayments: state.pendingPayments
-        };
-        const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `Backup_NutritionPro_${new Date().toLocaleDateString()}.json`;
-        a.click();
+    function updateUI() {
+        renderWaiting();
+        renderMiniWaiting();
+        renderBilling();
+        updateStatusUI();
+        updateCaisseBadge();
+        refreshFinanceUI();
+        if (state.current) {
+            document.getElementById('docPatientName').innerText = state.current.name;
+            document.getElementById('docPatientAgeDisplay').innerText = "Âge: " + state.current.age + " ans";
+            calculateVisitCount();
+        }
     }
 
-    // ميزة استيراد البيانات (Import)
-    function importData(event) {
-        const file = event.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            try {
-                const data = JSON.parse(e.target.result);
-                if (data.config) localStorage.setItem('clinic_config_v5', JSON.stringify(data.config));
-                if (data.history) localStorage.setItem('clinic_history_v12', JSON.stringify(data.history));
-                if (data.pendingPayments) localStorage.setItem('pending_payments', JSON.stringify(data.pendingPayments));
-                alert("Données restaurées avec succès !");
-                location.reload();
-            } catch (err) {
-                alert("Erreur lors de l'importation. Fichier invalide.");
-            }
+    function saveCloud() {
+        db.ref('clinic_data').update({
+            waiting: state.waiting,
+            current: state.current,
+            pendingPayments: state.pendingPayments
+        });
+    }
+
+    function addPatient() {
+        const n = document.getElementById('p-name'), a = document.getElementById('p-age'), ph = document.getElementById('p-phone');
+        if(!n.value) return;
+        if(!state.waiting) state.waiting = [];
+        state.waiting.push({ id: Date.now(), name: n.value.trim(), age: a.value || "N/A", phone: ph.value || "N/A" });
+        saveCloud();
+        n.value = ''; a.value = ''; ph.value = '';
+    }
+
+    function callPatient(id) {
+        if(state.current) return alert("Terminez d'abord.");
+        const idx = state.waiting.findIndex(p => p.id === id);
+        state.current = state.waiting.splice(idx, 1)[0];
+        saveCloud();
+    }
+
+    function finishConsult() {
+        if(!state.current) return;
+        const now = new Date();
+        const visitData = { 
+            ...state.current, 
+            meds: [...state.currentMeds], 
+            analysis: document.getElementById('analysisArea').value, 
+            poids: parseFloat(document.getElementById('poids-input').value || 0), 
+            price: parseFloat(document.getElementById('consult-price').value || 0), 
+            timestamp: now.getTime(), 
+            dateKey: now.toISOString().split('T')[0] 
         };
-        reader.readAsText(file);
+        
+        if(!state.pendingPayments) state.pendingPayments = [];
+        state.pendingPayments.push(visitData);
+        state.current = null;
+        state.currentMeds = [];
+        
+        document.getElementById('medListDisplay').innerHTML = ''; 
+        document.getElementById('analysisArea').value = ''; 
+        document.getElementById('poids-input').value = '';
+        document.getElementById('doctor-real-content').style.display = "none";
+        document.getElementById('doctor-lock-screen').style.display = "flex";
+        
+        saveCloud();
+    }
+
+    function confirmPayment(idx) {
+        const item = state.pendingPayments.splice(idx, 1)[0];
+        db.ref('clinic_data/history').push(item); // حفظ في الأرشيف السحابي
+        saveCloud();
     }
 
     function unlockContent(type) {
@@ -272,28 +337,18 @@
         } else { alert("Code Incorrect !"); }
     }
 
-    function addPatient() {
-        const n = document.getElementById('p-name'), a = document.getElementById('p-age'), ph = document.getElementById('p-phone');
-        if(!n.value) return;
-        state.waiting.push({ id: Date.now(), name: n.value.trim(), age: a.value || "N/A", phone: ph.value || "N/A" });
-        n.value = ''; a.value = ''; ph.value = ''; renderWaiting(); 
+    function renderWaiting() {
+        document.getElementById('waitingListContainer').innerHTML = (state.waiting || []).map(p => `
+            <div class="card" style="display:flex; justify-content:space-between; padding:12px; margin-bottom:8px; border:1px solid #eee; align-items:center;">
+                <span><b>${p.name}</b></span>
+                <button onclick="callPatient(${p.id})" class="btn-primary">Appeler</button>
+            </div>`).join('') || "Salle d'attente vide";
     }
-
-    function renderWaiting() { document.getElementById('waitingListContainer').innerHTML = state.waiting.map(p => `<div class="card" style="display:flex; justify-content:space-between; padding:12px; margin-bottom:8px; border:1px solid #eee; align-items:center;"><span><b>${p.name}</b></span><button onclick="callPatient(${p.id})" class="btn-primary">Appeler</button></div>`).join('') || "Salle d'attente vide"; }
 
     function updateStatusUI() {
         const rS = document.getElementById('receptionStatus'), rT = document.getElementById('receptionStatusText');
         if(state.current) { rS.className="status-monitor status-busy"; rT.innerHTML=`Doctoresse : <b>Occupée</b> (${state.current.name})`; }
         else { rS.className="status-monitor status-free"; rT.innerText="Doctoresse : Disponible"; }
-    }
-
-    function callPatient(id) {
-        if(state.current) return alert("Terminez d'abord.");
-        state.current = state.waiting.splice(state.waiting.findIndex(p => p.id === id), 1)[0];
-        renderWaiting(); renderMiniWaiting(); 
-        document.getElementById('docPatientName').innerText = state.current.name;
-        document.getElementById('docPatientAgeDisplay').innerText = "Âge: " + state.current.age + " ans";
-        updateStatusUI(); calculateVisitCount(); calculateWeightDiff();
     }
 
     function calculateVisitCount() {
@@ -317,24 +372,13 @@
     function addMedToList() {
         const n = document.getElementById('m-name').value; if(!n) return;
         state.currentMeds.push({ name: n, dose: document.getElementById('m-dose').value, qty: document.getElementById('m-qty').value, freq: document.getElementById('m-freq').value });
-        renderMeds(); ['m-name', 'm-dose', 'm-qty', 'm-freq'].forEach(i => document.getElementById(i).value = '');
+        renderMedsUI(); 
+        ['m-name', 'm-dose', 'm-qty', 'm-freq'].forEach(i => document.getElementById(i).value = '');
     }
 
-    function renderMeds() { document.getElementById('medListDisplay').innerHTML = state.currentMeds.map((m, i) => `<div style="background:#f9fbf9; padding:10px; border-radius:15px; display:flex; justify-content:space-between; margin-bottom:5px;"><b>${m.name}</b><i class="fas fa-trash-can" style="color:var(--danger); cursor:pointer;" onclick="state.currentMeds.splice(${i},1);renderMeds()"></i></div>`).join(''); }
+    function renderMedsUI() { document.getElementById('medListDisplay').innerHTML = state.currentMeds.map((m, i) => `<div style="background:#f9fbf9; padding:10px; border-radius:15px; display:flex; justify-content:space-between; margin-bottom:5px;"><b>${m.name}</b><i class="fas fa-trash-can" style="color:var(--danger); cursor:pointer;" onclick="state.currentMeds.splice(${i},1);renderMedsUI()"></i></div>`).join(''); }
 
-    function finishConsult() {
-        if(!state.current) return;
-        const now = new Date();
-        state.pendingPayments.push({ ...state.current, meds: [...state.currentMeds], analysis: document.getElementById('analysisArea').value, poids: parseFloat(document.getElementById('poids-input').value || 0), price: parseFloat(document.getElementById('consult-price').value || 0), timestamp: now.getTime(), dateKey: now.toISOString().split('T')[0] });
-        localStorage.setItem('pending_payments', JSON.stringify(state.pendingPayments));
-        state.current = null; state.currentMeds = [];
-        document.getElementById('medListDisplay').innerHTML = ''; document.getElementById('analysisArea').value = ''; document.getElementById('poids-input').value = '';
-        document.getElementById('doctor-real-content').style.display = "none";
-        document.getElementById('doctor-lock-screen').style.display = "flex";
-        updateStatusUI(); updateCaisseBadge(); showPanel('reception');
-    }
-
-    function updateCaisseBadge() { const b = document.getElementById('caisseBadge'); const c = state.pendingPayments.length; b.innerText = c; b.style.display = c > 0 ? "block" : "none"; }
+    function updateCaisseBadge() { const b = document.getElementById('caisseBadge'); const c = (state.pendingPayments || []).length; b.innerText = c; b.style.display = c > 0 ? "block" : "none"; }
 
     function calculateRevenue() {
         const s = document.getElementById('revenue-start').value, e = document.getElementById('revenue-end').value;
@@ -372,7 +416,7 @@
         document.getElementById('archiveResults').innerHTML = h.map((h, i) => `
             <div class="card" style="padding:15px; border-left:8px solid var(--primary); margin-bottom:10px;">
                 <div style="display:flex; justify-content:space-between; align-items:center;"><div><b>${h.name}</b><br><small>${h.dateKey}</small></div><i class="fas fa-eye" style="color:var(--accent); cursor:pointer; font-size:1.2rem;" onclick="toggleDetails(${i})"></i></div>
-                <div id="details-${i}" style="display:none; margin-top:15px; font-size:0.9rem;"><p><b>Téléphone:</b> ${h.phone || 'N/A'}</p><p><b>Poids:</b> ${h.poids} Kg</p><p><b>Ordonnance:</b><br>${h.meds.map(m => `- ${m.name}`).join('<br>') || 'Vide'}</p><p><b>Analyses:</b><br>${h.analysis.replace(/\n/g, '<br>') || 'Vide'}</p></div>
+                <div id="details-${i}" style="display:none; margin-top:15px; font-size:0.9rem;"><p><b>Téléphone:</b> ${h.phone || 'N/A'}</p><p><b>Poids:</b> ${h.poids} Kg</p><p><b>Ordonnance:</b><br>${h.meds ? h.meds.map(m => `- ${m.name}`).join('<br>') : 'Vide'}</p><p><b>Analyses:</b><br>${h.analysis ? h.analysis.replace(/\n/g, '<br>') : 'Vide'}</p></div>
             </div>`).join('');
     }
 
@@ -384,19 +428,19 @@
         if(el) { document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active')); el.classList.add('active'); }
         if(id !== 'doctor') { document.getElementById('doctor-real-content').style.display = "none"; document.getElementById('doctor-lock-screen').style.display = "flex"; }
         if(id !== 'archive') { document.getElementById('archive-real-content').style.display = "none"; document.getElementById('archive-lock-screen').style.display = "flex"; }
-        if(id === 'billing') { renderBilling(); refreshFinanceUI(); } 
-        if(id === 'doctor') renderMiniWaiting(); 
     }
 
     function addQuickNote(t) { document.getElementById('analysisArea').value += (document.getElementById('analysisArea').value ? "\n" : "") + "- " + t; }
-    function renderMiniWaiting() { document.getElementById('miniWaitingList').innerHTML = state.waiting.map(p => `<div>${p.name}</div>`).join('') || "Vide"; }
-    function renderBilling() { document.getElementById('billingList').innerHTML = state.pendingPayments.map((p, i) => `<div class="card" style="display:flex; justify-content:space-between; align-items:center; border-left:8px solid var(--accent);"><span><b>${p.name}</b></span><button onclick="confirmPayment(${i})" class="btn-success">Valider</button></div>`).join('') || "Vide"; }
-    function confirmPayment(idx) { state.history.push({ ...state.pendingPayments.splice(idx, 1)[0] }); localStorage.setItem('pending_payments', JSON.stringify(state.pendingPayments)); localStorage.setItem('clinic_history_v12', JSON.stringify(state.history)); updateCaisseBadge(); renderBilling(); refreshFinanceUI(); }
+    function renderMiniWaiting() { document.getElementById('miniWaitingList').innerHTML = (state.waiting || []).map(p => `<div>${p.name}</div>`).join('') || "Vide"; }
+    function renderBilling() { document.getElementById('billingList').innerHTML = (state.pendingPayments || []).map((p, i) => `<div class="card" style="display:flex; justify-content:space-between; align-items:center; border-left:8px solid var(--accent);"><span><b>${p.name}</b></span><button onclick="confirmPayment(${i})" class="btn-success">Valider</button></div>`).join('') || "Vide"; }
     function refreshFinanceUI() { const today = new Date().toISOString().split('T')[0]; const recs = state.history.filter(h => h.dateKey === today); document.getElementById('dailyCount').innerText = recs.length; let sum = recs.reduce((s, r) => s + r.price, 0); document.getElementById('dailySum').innerText = sum + " DA"; document.getElementById('paidHistoryList').innerHTML = recs.map(r => `<tr><td style="padding:12px; border-bottom:1px solid #eee;"><b>${r.name}</b></td><td style="text-align:right;">${r.price} DA</td></tr>`).join(''); }
     function saveClinicConfig() { ['clinic', 'doctor', 'spec', 'address', 'phone'].forEach(k => config[k] = document.getElementById('conf-'+k).value); localStorage.setItem('clinic_config_v5', JSON.stringify(config)); alert("Sauvegardé!"); }
     function handleLogoUpload(e) { const r = new FileReader(); r.onload = () => config.logo = r.result; r.readAsDataURL(e.target.files[0]); }
     function closeModal() { document.getElementById('previewModal').style.display = "none"; }
+    function exportData() { const blob = new Blob([JSON.stringify(state)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `Backup_Cloud.json`; a.click(); }
+    function importData(event) { const file = event.target.files[0]; const reader = new FileReader(); reader.onload = (e) => { db.ref('clinic_data').set(JSON.parse(e.target.result)); location.reload(); }; reader.readAsText(file); }
 </script>
 
 </body>
 </html>
+
