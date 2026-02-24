@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MédiSoft Nutrition Pro - Aesthetic Edition</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;600;700&family=Playfair+Display:ital,wght@0,700;1,500&family=Cinzel:wght@600&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <style>
+        :root { 
+            --primary: #556b2f; --secondary: #8fbc8f; --accent: #d4a373; 
+            --bg: #faf9f6; --card-bg: #ffffff; --text: #2d3436;
+            --success: #2ecc71; --danger: #e74c3c;
+        }
+
+        body { font-family: 'Quicksand', sans-serif; margin: 0; display: flex; background: var(--bg); color: var(--text); }
+        
+        .sidebar { width: 260px; background: var(--primary); color: white; height: 100vh; position: fixed; z-index: 100; box-shadow: 4px 0 10px rgba(0,0,0,0.1); }
+        .sidebar-header { padding: 40px 20px; font-family: 'Cinzel', serif; font-size: 1.2rem; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .nav-item { padding: 18px 25px; cursor: pointer; display: flex; align-items: center; gap: 15px; color: rgba(255,255,255,0.8); transition: 0.3s; border-radius: 0 50px 50px 0; margin-right: 15px; margin-top: 5px; position: relative; }
+        .nav-item:hover { background: rgba(255,255,255,0.1); color: white; }
+        .nav-item.active { background: var(--accent); color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+
+        .notif-badge { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); background: var(--danger); color: white; font-size: 0.75rem; padding: 2px 7px; border-radius: 50%; font-weight: 800; display: none; }
+
+        .main-content { flex: 1; margin-left: 260px; padding: 40px; }
+        .panel { display: none; }
+        .panel.active { display: block; animation: fadeIn 0.6s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        .status-monitor { padding: 15px 25px; border-radius: 20px; display: flex; align-items: center; gap: 15px; margin-bottom: 25px; font-weight: 700; transition: 0.3s; }
+        .status-free { background: #eefdf3; color: #15803d; border-left: 8px solid var(--success); }
+        .status-busy { background: #fff5f5; color: #b91c1c; border-left: 8px solid var(--danger); }
+
+        .card { background: var(--card-bg); padding: 25px; border-radius: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.03); border: 1px solid rgba(0,0,0,0.02); margin-bottom: 25px; }
+        h3 { color: var(--primary); margin-top: 0; font-weight: 700; }
+
+        input, textarea { width: 100%; padding: 14px; margin: 8px 0; border-radius: 15px; border: 1.5px solid #eee; outline: none; transition: 0.3s; background: #fdfdfd; }
+        input:focus { border-color: var(--secondary); background: white; }
+        
+        button { border: none; padding: 14px 22px; border-radius: 15px; cursor: pointer; font-weight: 700; display: flex; align-items: center; gap: 10px; transition: 0.3s; }
+        button:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-success { background: var(--success); color: white; }
+        .btn-accent { background: var(--accent); color: white; }
+        .btn-outline { background: #f1f2f6; color: #57606f; }
+
+        .pill { background: #f1f8f1; color: #4b5e4b; padding: 8px 15px; border-radius: 50px; font-size: 0.75rem; font-weight: 700; cursor: pointer; border: 1px solid #e0eee0; margin: 4px; display: inline-block; transition: 0.3s; }
+        .pill:hover { background: var(--secondary); color: white; border-color: var(--secondary); }
+
+        .weight-indicator { padding: 10px 18px; border-radius: 15px; font-weight: 700; font-size: 0.9rem; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .visit-badge { background: rgba(255,255,255,0.2); padding: 5px 12px; border-radius: 10px; font-size: 0.8rem; margin-top: 10px; display: inline-block; }
+
+        .modal { display: none; position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); overflow-y: auto; }
+        .modal-content { background: #f1f2f6; margin: 30px auto; width: 148mm; border-radius: 20px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+        
+        #previewArea { width: 148mm; min-height: 210mm; background: white; padding: 20mm 15mm; position: relative; color: #2d3436; margin: 0 auto; box-sizing: border-box; display: block; }
+        .presc-header { display: flex; justify-content: space-between; border-bottom: 2px solid var(--primary); padding-bottom: 15px; margin-bottom: 25px; }
+        .presc-logo-img { max-width: 90px; max-height: 90px; object-fit: contain; }
+        .clinic-info-preview h2 { margin: 0; color: var(--primary); font-family: 'Cinzel', serif; font-size: 1.4rem; }
+        .clinic-info-preview p { margin: 2px 0; font-size: 0.9rem; font-weight: bold; }
+        .clinic-info-preview span { font-size: 0.8rem; font-style: italic; color: var(--primary); font-weight: 600; }
+
+        .patient-box { background: #f9fbf9; padding: 15px; border-radius: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 30px; border: 1px solid #edf2ed; font-size: 0.85rem; color: #4b5e4b; font-weight: 700; }
+        .presc-title { text-align: center; font-family: 'Playfair Display', serif; font-size: 1.8rem; margin-bottom: 30px; color: var(--primary); letter-spacing: 1px; }
+        .med-row { margin-bottom: 12px; padding-left: 15px; border-left: 3px solid var(--secondary); text-align: left; }
+        .presc-footer { border-top: 1px solid #eee; padding-top: 15px; text-align: center; font-size: 0.8rem; color: #95a5a6; position: absolute; bottom: 15mm; left: 15mm; right: 15mm; }
+
+        .lock-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 300px; }
+        .real-content { display: none; }
+
+        @media print { body { visibility: hidden; } .modal, #previewArea { visibility: visible; position: absolute; left: 0; top: 0; width: 148mm; border: none; } @page { size: A5; margin: 0; } }
+    </style>
+</head>
+
+<body>
+
+<div class="sidebar">
+    <div class="sidebar-header"><i class="fas fa-leaf"></i><br>NUTRITION PRO</div>
+    <div class="nav-item active" onclick="showPanel('reception', this)"><i class="fas fa-user-plus"></i> Réception</div>
+    <div class="nav-item" onclick="showPanel('doctor', this)"><i class="fas fa-apple-whole"></i> Consultation</div>
+    <div class="nav-item" onclick="showPanel('billing', this)"><i class="fas fa-coins"></i> Caisse <span id="caisseBadge" class="notif-badge">0</span></div>
+    <div class="nav-item" onclick="showPanel('archive', this)"><i class="fas fa-history"></i> Archives</div>
+    <div class="nav-item" onclick="showPanel('params', this)"><i class="fas fa-sliders"></i> Paramètres</div>
+</div>
+
+<div class="main-content">
+    <div id="reception" class="panel active">
+        <div id="receptionStatus" class="status-monitor status-free">
+            <i class="fas fa-circle"></i> <span id="receptionStatusText">Doctoresse : Disponible</span>
+        </div>
+        <div class="card">
+            <h3>Nouveau Patient</h3>
+            <div style="display:grid; grid-template-columns: 1fr 1fr 1fr auto; gap:15px;">
+                <input id="p-name" placeholder="Nom Complet">
+                <input id="p-age" type="number" placeholder="Âge">
+                <input id="p-phone" placeholder="Téléphone">
+                <button onclick="addPatient()" class="btn-primary">Enregistrer</button>
+            </div>
+        </div>
+        <div class="card"><h3>File d'attente</h3><div id="waitingListContainer"></div></div>
+    </div>
+
+    <div id="doctor" class="panel">
+        <div id="doctor-lock-screen" class="card lock-screen">
+            <i class="fas fa-lock" style="font-size: 3rem; color: var(--accent); margin-bottom: 20px;"></i>
+            <h3>Accès Réservé</h3>
+            <input type="password" id="doctor-pass-input" placeholder="Entrez le code" style="width: 200px; text-align: center;">
+            <button onclick="unlockContent('doctor')" class="btn-primary" style="margin-top: 10px;">Déverrouiller</button>
+        </div>
+
+        <div id="doctor-real-content" class="real-content">
+            <div style="display: grid; grid-template-columns: 1fr 300px; gap: 30px;">
+                <div>
+                    <div class="card" style="background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white; border-radius: 25px; padding: 30px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <div>
+                                <h2 id="docPatientName" style="margin:0; font-family:'Cinzel';">Patient : ---</h2>
+                                <p id="docPatientAgeDisplay" style="margin:5px 0 0 0; font-weight:bold; opacity:0.9;"></p>
+                                <span id="visitNumber" class="visit-badge">Chargement...</span>
+                            </div>
+                            <div id="weightDiffDisplay"></div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+                            <div><label style="font-weight:700">Poids Actuel (Kg)</label><input id="poids-input" type="number" step="0.1" placeholder="00.0" oninput="calculateWeightDiff()"></div>
+                            <div><label style="font-weight:700">Tarif (DA)</label><input id="consult-price" type="number" value="2000"></div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <h3>Ordonnance</h3>
+                        <div id="medListDisplay" style="margin-bottom:20px;"></div>
+                        <div style="display:grid; grid-template-columns: 2fr 1fr 1fr 1fr auto; gap:8px;">
+                            <input id="m-name" placeholder="Désignation"><input id="m-dose" placeholder="Dose"><input id="m-qty" placeholder="Qté"><input id="m-freq" placeholder="Freq">
+                            <button onclick="addMedToList()" class="btn-primary" style="padding:10px 15px;">+</button>
+                        </div>
+                        <button onclick="previewDoc('presc')" class="btn-accent" style="margin-top:20px; width:100%; justify-content:center;">Aperçu Ordonnance</button>
+                    </div>
+                    <div class="card">
+                        <h3>Bilan Biologique</h3>
+                        <div id="quickAnalyses" style="margin-bottom:15px;">
+                            <span class="pill" onclick="addQuickNote('FNS')">FNS</span><span class="pill" onclick="addQuickNote('Glycémie à jeun')">Glycémie</span><span class="pill" onclick="addQuickNote('HbA1c')">HbA1c</span><span class="pill" onclick="addQuickNote('Indice HOMA-IR')">HOMA-IR</span><span class="pill" onclick="addQuickNote('Vitamine D')">Vitamine D</span><span class="pill" onclick="addQuickNote('Ferritine')">Ferritine</span><span class="pill" onclick="addQuickNote('Bilan Lipidique')">Bilan Lipidique</span><span class="pill" onclick="addQuickNote('TSH')">TSH</span>
+                        </div>
+                        <textarea id="analysisArea" rows="4" placeholder="Analyses complémentaires..."></textarea>
+                        <div style="display:flex; gap:15px;"><button onclick="previewDoc('anal')" class="btn-outline" style="flex:1; justify-content:center;">Aperçu Analyses</button><button onclick="finishConsult()" class="btn-success" style="flex:1; justify-content:center;">Terminer Visite</button></div>
+                    </div>
+                </div>
+                <div><div class="card" style="background:#f9fbf9; padding:20px;"><h4>Liste d'attente</h4><div id="miniWaitingList"></div></div></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="billing" class="panel">
+        <div class="card">
+            <h3>Calcul des Revenus</h3>
+            <div style="display:flex; gap:15px; align-items:flex-end;">
+                <div style="flex:1;"><label>Du:</label><input type="date" id="revenue-start"></div>
+                <div style="flex:1;"><label>Au:</label><input type="date" id="revenue-end"></div>
+                <button onclick="calculateRevenue()" class="btn-primary">Calculer</button>
+            </div>
+            <div id="revenueResult" style="margin-top:20px; font-size:1.2rem; font-weight:bold; color:var(--primary);"></div>
+        </div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:25px; margin-bottom:25px;">
+            <div class="card" style="background:var(--primary); color:white; text-align:center;"><small>Patients Jour</small><h2 id="dailyCount" style="margin:10px 0">0</h2></div>
+            <div class="card" style="background:var(--accent); color:white; text-align:center;"><small>Recette Totale Jour</small><h2 id="dailySum" style="margin:10px 0">0 DA</h2></div>
+        </div>
+        <div class="card"><h3>Paiements en attente</h3><div id="billingList"></div><hr><table style="width:100%;" id="paidHistoryList"></table></div>
+    </div>
+
+    <div id="archive" class="panel">
+        <div id="archive-lock-screen" class="card lock-screen">
+            <i class="fas fa-lock" style="font-size: 3rem; color: var(--accent); margin-bottom: 20px;"></i>
+            <h3>Accès Archives Réservé</h3>
+            <input type="password" id="archive-pass-input" placeholder="Entrez le code" style="width: 200px; text-align: center;">
+            <button onclick="unlockContent('archive')" class="btn-primary" style="margin-top: 10px;">Déverrouiller</button>
+        </div>
+        <div id="archive-real-content" class="real-content">
+            <div class="card">
+                <h3>Dossiers Patients</h3>
+                <input id="searchName" placeholder="Nom du patient..." onkeyup="searchArchive()">
+                <div id="archiveResults" style="margin-top:20px;"></div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="params" class="panel">
+        <div class="card">
+            <h3>Configuration Cabinet</h3>
+            <input id="conf-clinic" placeholder="Clinique"><input id="conf-doc" placeholder="Doctoresse"><input id="conf-spec" placeholder="Spécialité"><input id="conf-addr" placeholder="Adresse"><input id="conf-tel" placeholder="Tel">
+            <div style="margin:15px 0; border:2px dashed #eee; padding:20px; text-align:center; border-radius:20px;"><label>Logo: </label><input type="file" onchange="handleLogoUpload(event)"></div>
+            <button onclick="saveClinicConfig()" class="btn-primary" style="width:100%; justify-content:center;">Sauvegarder</button>
+        </div>
+        <div class="card">
+            <h3>Sauvegarde des Données</h3>
+            <p style="font-size: 0.9rem; color: #666;">Téléchargez une copie de vos données pour les restaurer plus tard.</p>
+            <div style="display:flex; gap:15px; margin-top:10px;">
+                <button onclick="exportData()" class="btn-outline" style="flex:1; justify-content:center;"><i class="fas fa-download"></i> Exporter Backup</button>
+                <button onclick="document.getElementById('importFile').click()" class="btn-outline" style="flex:1; justify-content:center;"><i class="fas fa-upload"></i> Importer Backup</button>
+                <input type="file" id="importFile" style="display:none" onchange="importData(event)">
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="previewModal" class="modal">
+    <div class="modal-content">
+        <div style="background:var(--primary); padding:18px 25px; display:flex; justify-content:space-between; color:white;">
+            <span style="font-weight:700">Aperçu</span>
+            <div style="display:flex; gap:12px;">
+                <button onclick="exportToPDF()" class="btn-accent" style="padding:8px 15px;"><i class="fas fa-file-pdf"></i> PDF</button>
+                <button onclick="window.print()" class="btn-success" style="padding:8px 15px;"><i class="fas fa-print"></i> Imprimer</button>
+                <button onclick="closeModal()" class="btn-danger" style="padding:8px 15px;">X</button>
+            </div>
+        </div>
+        <div id="previewArea"></div>
+    </div>
+</div>
+
+<script>
+    let config = JSON.parse(localStorage.getItem('clinic_config_v5')) || { clinic: "NUTRITION CLINIC", doctor: "DR. NOM", spec: "NUTRITIONNISTE", address: "ADRESSE", phone: "000000", logo: "" };
+    let state = { waiting: [], current: null, currentMeds: [], pendingPayments: JSON.parse(localStorage.getItem('pending_payments')) || [], history: JSON.parse(localStorage.getItem('clinic_history_v12')) || [] };
+
+    window.onload = () => {
+        ['clinic', 'doctor', 'spec', 'address', 'phone'].forEach(k => { if(document.getElementById('conf-'+k)) document.getElementById('conf-'+k).value = config[k] || ""; });
+        updateCaisseBadge(); refreshFinanceUI(); updateStatusUI();
+    };
+
+    // ميزة تصدير البيانات (Export)
+    function exportData() {
+        const data = {
+            config: config,
+            history: state.history,
+            pendingPayments: state.pendingPayments
+        };
+        const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Backup_NutritionPro_${new Date().toLocaleDateString()}.json`;
+        a.click();
+    }
+
+    // ميزة استيراد البيانات (Import)
+    function importData(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const data = JSON.parse(e.target.result);
+                if (data.config) localStorage.setItem('clinic_config_v5', JSON.stringify(data.config));
+                if (data.history) localStorage.setItem('clinic_history_v12', JSON.stringify(data.history));
+                if (data.pendingPayments) localStorage.setItem('pending_payments', JSON.stringify(data.pendingPayments));
+                alert("Données restaurées avec succès !");
+                location.reload();
+            } catch (err) {
+                alert("Erreur lors de l'importation. Fichier invalide.");
+            }
+        };
+        reader.readAsText(file);
+    }
+
+    function unlockContent(type) {
+        const pass = document.getElementById(type + '-pass-input').value;
+        if(pass === "1234") {
+            document.getElementById(type + '-lock-screen').style.display = "none";
+            document.getElementById(type + '-real-content').style.display = "block";
+        } else { alert("Code Incorrect !"); }
+    }
+
+    function addPatient() {
+        const n = document.getElementById('p-name'), a = document.getElementById('p-age'), ph = document.getElementById('p-phone');
+        if(!n.value) return;
+        state.waiting.push({ id: Date.now(), name: n.value.trim(), age: a.value || "N/A", phone: ph.value || "N/A" });
+        n.value = ''; a.value = ''; ph.value = ''; renderWaiting(); 
+    }
+
+    function renderWaiting() { document.getElementById('waitingListContainer').innerHTML = state.waiting.map(p => `<div class="card" style="display:flex; justify-content:space-between; padding:12px; margin-bottom:8px; border:1px solid #eee; align-items:center;"><span><b>${p.name}</b></span><button onclick="callPatient(${p.id})" class="btn-primary">Appeler</button></div>`).join('') || "Salle d'attente vide"; }
+
+    function updateStatusUI() {
+        const rS = document.getElementById('receptionStatus'), rT = document.getElementById('receptionStatusText');
+        if(state.current) { rS.className="status-monitor status-busy"; rT.innerHTML=`Doctoresse : <b>Occupée</b> (${state.current.name})`; }
+        else { rS.className="status-monitor status-free"; rT.innerText="Doctoresse : Disponible"; }
+    }
+
+    function callPatient(id) {
+        if(state.current) return alert("Terminez d'abord.");
+        state.current = state.waiting.splice(state.waiting.findIndex(p => p.id === id), 1)[0];
+        renderWaiting(); renderMiniWaiting(); 
+        document.getElementById('docPatientName').innerText = state.current.name;
+        document.getElementById('docPatientAgeDisplay').innerText = "Âge: " + state.current.age + " ans";
+        updateStatusUI(); calculateVisitCount(); calculateWeightDiff();
+    }
+
+    function calculateVisitCount() {
+        if(!state.current) return;
+        const h = state.history.filter(h => h.name.trim().toLowerCase() === state.current.name.trim().toLowerCase());
+        document.getElementById('visitNumber').innerText = (h.length + 1) === 1 ? "1ère Consultation" : (h.length + 1) + "ème Consultation";
+    }
+
+    function calculateWeightDiff() {
+        if(!state.current) return;
+        const h = state.history.filter(h => h.name.trim().toLowerCase() === state.current.name.trim().toLowerCase());
+        const curW = parseFloat(document.getElementById('poids-input').value);
+        const display = document.getElementById('weightDiffDisplay');
+        const lastV = h[h.length - 1];
+        if(lastV && curW) {
+            const diff = (curW - parseFloat(lastV.poids)).toFixed(1);
+            display.innerHTML = `<span class="weight-indicator ${diff < 0 ? 'loss' : 'gain'}">${diff < 0 ? 'Perte' : 'Gain'}: ${Math.abs(diff)} Kg</span>`;
+        } else display.innerHTML = `<span class="weight-indicator first">Stable</span>`;
+    }
+
+    function addMedToList() {
+        const n = document.getElementById('m-name').value; if(!n) return;
+        state.currentMeds.push({ name: n, dose: document.getElementById('m-dose').value, qty: document.getElementById('m-qty').value, freq: document.getElementById('m-freq').value });
+        renderMeds(); ['m-name', 'm-dose', 'm-qty', 'm-freq'].forEach(i => document.getElementById(i).value = '');
+    }
+
+    function renderMeds() { document.getElementById('medListDisplay').innerHTML = state.currentMeds.map((m, i) => `<div style="background:#f9fbf9; padding:10px; border-radius:15px; display:flex; justify-content:space-between; margin-bottom:5px;"><b>${m.name}</b><i class="fas fa-trash-can" style="color:var(--danger); cursor:pointer;" onclick="state.currentMeds.splice(${i},1);renderMeds()"></i></div>`).join(''); }
+
+    function finishConsult() {
+        if(!state.current) return;
+        const now = new Date();
+        state.pendingPayments.push({ ...state.current, meds: [...state.currentMeds], analysis: document.getElementById('analysisArea').value, poids: parseFloat(document.getElementById('poids-input').value || 0), price: parseFloat(document.getElementById('consult-price').value || 0), timestamp: now.getTime(), dateKey: now.toISOString().split('T')[0] });
+        localStorage.setItem('pending_payments', JSON.stringify(state.pendingPayments));
+        state.current = null; state.currentMeds = [];
+        document.getElementById('medListDisplay').innerHTML = ''; document.getElementById('analysisArea').value = ''; document.getElementById('poids-input').value = '';
+        document.getElementById('doctor-real-content').style.display = "none";
+        document.getElementById('doctor-lock-screen').style.display = "flex";
+        updateStatusUI(); updateCaisseBadge(); showPanel('reception');
+    }
+
+    function updateCaisseBadge() { const b = document.getElementById('caisseBadge'); const c = state.pendingPayments.length; b.innerText = c; b.style.display = c > 0 ? "block" : "none"; }
+
+    function calculateRevenue() {
+        const s = document.getElementById('revenue-start').value, e = document.getElementById('revenue-end').value;
+        if(!s || !e) return alert("Dates ?");
+        const rev = state.history.filter(h => h.dateKey >= s && h.dateKey <= e).reduce((sum, h) => sum + h.price, 0);
+        document.getElementById('revenueResult').innerText = `Revenus: ${rev} DA`;
+    }
+
+    function previewDoc(type) {
+        const area = document.getElementById('previewArea'), weight = document.getElementById('poids-input').value || "--";
+        area.innerHTML = `
+            <div class="presc-header"><div class="clinic-info-preview"><h2>${config.clinic}</h2><p>Dr. ${config.doctor}</p><span>${config.spec}</span></div>${config.logo ? `<img src="${config.logo}" class="presc-logo-img">` : ''}</div>
+            <div class="patient-box"><div>Patient: ${state.current ? state.current.name : '---'}</div><div style="text-align:right">Date: ${new Date().toLocaleDateString()}</div><div>Âge: ${state.current ? state.current.age : '--'} ans</div><div style="text-align:right">Poids: ${weight} Kg</div></div>
+            <div class="presc-title">${type === 'presc' ? 'Ordonnance' : 'Bilan Biologique'}</div>
+        `;
+        if(type === 'presc') state.currentMeds.forEach((m, i) => area.innerHTML += `<div class="med-row"><b>${i+1}. ${m.name.toUpperCase()} ${m.dose}</b><br><small>Q: ${m.qty} --------- ${m.freq} JRS</small></div>`);
+        else area.innerHTML += `<div style="white-space:pre-wrap; line-height:2; font-size:1.1rem; text-align:left;">${document.getElementById('analysisArea').value}</div>`;
+        area.innerHTML += `<div class="presc-footer">${config.address} - Tel: ${config.phone}</div>`;
+        document.getElementById('previewModal').style.display = "block";
+    }
+
+    function exportToPDF() {
+        const { jsPDF } = window.jspdf;
+        html2canvas(document.getElementById('previewArea'), { scale: 3 }).then(canvas => {
+            const img = canvas.toDataURL('image/png'), pdf = new jsPDF('p', 'mm', 'a5');
+            const pdfW = pdf.internal.pageSize.getWidth(), pdfH = (canvas.height * pdfW) / canvas.width;
+            pdf.addImage(img, 'PNG', 0, 0, pdfW, pdfH); pdf.save(`Doc_${new Date().getTime()}.pdf`);
+        });
+    }
+
+    function searchArchive() {
+        const q = document.getElementById('searchName').value.toLowerCase();
+        if(!q) { document.getElementById('archiveResults').innerHTML = ""; return; }
+        const h = state.history.filter(h => h.name.toLowerCase().includes(q)).reverse();
+        document.getElementById('archiveResults').innerHTML = h.map((h, i) => `
+            <div class="card" style="padding:15px; border-left:8px solid var(--primary); margin-bottom:10px;">
+                <div style="display:flex; justify-content:space-between; align-items:center;"><div><b>${h.name}</b><br><small>${h.dateKey}</small></div><i class="fas fa-eye" style="color:var(--accent); cursor:pointer; font-size:1.2rem;" onclick="toggleDetails(${i})"></i></div>
+                <div id="details-${i}" style="display:none; margin-top:15px; font-size:0.9rem;"><p><b>Téléphone:</b> ${h.phone || 'N/A'}</p><p><b>Poids:</b> ${h.poids} Kg</p><p><b>Ordonnance:</b><br>${h.meds.map(m => `- ${m.name}`).join('<br>') || 'Vide'}</p><p><b>Analyses:</b><br>${h.analysis.replace(/\n/g, '<br>') || 'Vide'}</p></div>
+            </div>`).join('');
+    }
+
+    function toggleDetails(idx) { const el = document.getElementById(`details-${idx}`); el.style.display = el.style.display === 'none' ? 'block' : 'none'; }
+    
+    function showPanel(id, el) { 
+        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active')); 
+        document.getElementById(id).classList.add('active'); 
+        if(el) { document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active')); el.classList.add('active'); }
+        if(id !== 'doctor') { document.getElementById('doctor-real-content').style.display = "none"; document.getElementById('doctor-lock-screen').style.display = "flex"; }
+        if(id !== 'archive') { document.getElementById('archive-real-content').style.display = "none"; document.getElementById('archive-lock-screen').style.display = "flex"; }
+        if(id === 'billing') { renderBilling(); refreshFinanceUI(); } 
+        if(id === 'doctor') renderMiniWaiting(); 
+    }
+
+    function addQuickNote(t) { document.getElementById('analysisArea').value += (document.getElementById('analysisArea').value ? "\n" : "") + "- " + t; }
+    function renderMiniWaiting() { document.getElementById('miniWaitingList').innerHTML = state.waiting.map(p => `<div>${p.name}</div>`).join('') || "Vide"; }
+    function renderBilling() { document.getElementById('billingList').innerHTML = state.pendingPayments.map((p, i) => `<div class="card" style="display:flex; justify-content:space-between; align-items:center; border-left:8px solid var(--accent);"><span><b>${p.name}</b></span><button onclick="confirmPayment(${i})" class="btn-success">Valider</button></div>`).join('') || "Vide"; }
+    function confirmPayment(idx) { state.history.push({ ...state.pendingPayments.splice(idx, 1)[0] }); localStorage.setItem('pending_payments', JSON.stringify(state.pendingPayments)); localStorage.setItem('clinic_history_v12', JSON.stringify(state.history)); updateCaisseBadge(); renderBilling(); refreshFinanceUI(); }
+    function refreshFinanceUI() { const today = new Date().toISOString().split('T')[0]; const recs = state.history.filter(h => h.dateKey === today); document.getElementById('dailyCount').innerText = recs.length; let sum = recs.reduce((s, r) => s + r.price, 0); document.getElementById('dailySum').innerText = sum + " DA"; document.getElementById('paidHistoryList').innerHTML = recs.map(r => `<tr><td style="padding:12px; border-bottom:1px solid #eee;"><b>${r.name}</b></td><td style="text-align:right;">${r.price} DA</td></tr>`).join(''); }
+    function saveClinicConfig() { ['clinic', 'doctor', 'spec', 'address', 'phone'].forEach(k => config[k] = document.getElementById('conf-'+k).value); localStorage.setItem('clinic_config_v5', JSON.stringify(config)); alert("Sauvegardé!"); }
+    function handleLogoUpload(e) { const r = new FileReader(); r.onload = () => config.logo = r.result; r.readAsDataURL(e.target.files[0]); }
+    function closeModal() { document.getElementById('previewModal').style.display = "none"; }
+</script>
+
+</body>
+</html>
