@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MédiSoft Nutrition Pro - Cloud Sync Edition</title>
+    <title>MédiSoft Nutrition Pro - New Cloud Sync</title>
     
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
@@ -102,7 +102,7 @@
                 <input id="p-name" placeholder="Nom Complet">
                 <input id="p-age" type="number" placeholder="Âge">
                 <input id="p-phone" placeholder="Téléphone">
-                <button onclick="addPatient()" class="btn-primary">Enregistrer</button>
+                <button onclick="addPatient()" class="btn btn-primary">Enregistrer</button>
             </div>
         </div>
         <div class="card"><h3>File d'attente</h3><div id="waitingListContainer"></div></div>
@@ -113,7 +113,7 @@
             <i class="fas fa-lock" style="font-size: 3rem; color: var(--accent); margin-bottom: 20px;"></i>
             <h3>Accès Réservé</h3>
             <input type="password" id="doctor-pass-input" placeholder="Entrez le code" style="width: 200px; text-align: center;">
-            <button onclick="unlockContent('doctor')" class="btn-primary" style="margin-top: 10px;">Déverrouiller</button>
+            <button onclick="unlockContent('doctor')" class="btn btn-primary" style="margin-top: 10px;">Déverrouiller</button>
         </div>
 
         <div id="doctor-real-content" class="real-content">
@@ -225,7 +225,7 @@
 </div>
 
 <script>
-    // --- تكوين المزامنة السحابية Firebase ---
+    // --- Configuration Firebase (New Database Path: clinic_v3_new) ---
     const firebaseConfig = {
         apiKey: "AIzaSyDBYw9gZW-8uvZo6s3DGJhdWEInyPxvNn8",
         authDomain: "myclinic-c1ae8.firebaseapp.com",
@@ -241,8 +241,8 @@
     let config = JSON.parse(localStorage.getItem('clinic_config_v5')) || { clinic: "NUTRITION CLINIC", doctor: "DR. NOM", spec: "NUTRITIONNISTE", address: "ADRESSE", phone: "000000", logo: "" };
     let state = { waiting: [], current: null, currentMeds: [], pendingPayments: [], history: [] };
 
-    // ميزة المزامنة اللحظية مع السحابة
-    db.ref('clinic_data').on('value', (snap) => {
+    // Real-time listener for the new path 'clinic_v3_new'
+    db.ref('clinic_v3_new').on('value', (snap) => {
         if (snap.exists()) {
             const cloudData = snap.val();
             state.waiting = cloudData.waiting || [];
@@ -255,7 +255,6 @@
 
     window.onload = () => {
         ['clinic', 'doctor', 'spec', 'address', 'phone'].forEach(k => { if(document.getElementById('conf-'+k)) document.getElementById('conf-'+k).value = config[k] || ""; });
-        updateStatusUI();
     };
 
     function updateUI() {
@@ -273,7 +272,7 @@
     }
 
     function saveCloud() {
-        db.ref('clinic_data').update({
+        db.ref('clinic_v3_new').update({
             waiting: state.waiting,
             current: state.current,
             pendingPayments: state.pendingPayments
@@ -290,7 +289,7 @@
     }
 
     function callPatient(id) {
-        if(state.current) return alert("Terminez d'abord.");
+        if(state.current) return alert("Terminez d'abord la consultation en cours.");
         const idx = state.waiting.findIndex(p => p.id === id);
         state.current = state.waiting.splice(idx, 1)[0];
         saveCloud();
@@ -325,7 +324,7 @@
 
     function confirmPayment(idx) {
         const item = state.pendingPayments.splice(idx, 1)[0];
-        db.ref('clinic_data/history').push(item); // حفظ في الأرشيف السحابي
+        db.ref('clinic_v3_new/history').push(item); 
         saveCloud();
     }
 
@@ -438,9 +437,10 @@
     function handleLogoUpload(e) { const r = new FileReader(); r.onload = () => config.logo = r.result; r.readAsDataURL(e.target.files[0]); }
     function closeModal() { document.getElementById('previewModal').style.display = "none"; }
     function exportData() { const blob = new Blob([JSON.stringify(state)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `Backup_Cloud.json`; a.click(); }
-    function importData(event) { const file = event.target.files[0]; const reader = new FileReader(); reader.onload = (e) => { db.ref('clinic_data').set(JSON.parse(e.target.result)); location.reload(); }; reader.readAsText(file); }
+    function importData(event) { const file = event.target.files[0]; const reader = new FileReader(); reader.onload = (e) => { db.ref('clinic_v3_new').set(JSON.parse(e.target.result)); location.reload(); }; reader.readAsText(file); }
 </script>
 
 </body>
 </html>
+
 
