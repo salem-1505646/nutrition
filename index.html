@@ -7,7 +7,7 @@
     
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-
+    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;600;700&family=Playfair+Display:ital,wght@0,700;1,500&family=Cinzel:wght@600&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -102,7 +102,7 @@
                 <input id="p-name" placeholder="Nom Complet">
                 <input id="p-age" type="number" placeholder="Âge">
                 <input id="p-phone" placeholder="Téléphone">
-                <button onclick="addPatient()" class="btn-primary">Enregistrer</button>
+                <button onclick="addPatient()" class="btn btn-primary">Enregistrer</button>
             </div>
         </div>
         <div class="card"><h3>File d'attente</h3><div id="waitingListContainer"></div></div>
@@ -113,7 +113,7 @@
             <i class="fas fa-lock" style="font-size: 3rem; color: var(--accent); margin-bottom: 20px;"></i>
             <h3>Accès Réservé</h3>
             <input type="password" id="doctor-pass-input" placeholder="Entrez le code" style="width: 200px; text-align: center;">
-            <button onclick="unlockContent('doctor')" class="btn-primary" style="margin-top: 10px;">Déverrouiller</button>
+            <button onclick="unlockContent('doctor')" class="btn btn-primary" style="margin-top: 10px;">Déverrouiller</button>
         </div>
 
         <div id="doctor-real-content" class="real-content">
@@ -140,9 +140,9 @@
                         <div id="medListDisplay" style="margin-bottom:20px;"></div>
                         <div style="display:grid; grid-template-columns: 2fr 1fr 1fr 1fr auto; gap:8px;">
                             <input id="m-name" placeholder="Désignation"><input id="m-dose" placeholder="Dose"><input id="m-qty" placeholder="Qté"><input id="m-freq" placeholder="Freq">
-                            <button onclick="addMedToList()" class="btn-primary" style="padding:10px 15px;">+</button>
+                            <button onclick="addMedToList()" class="btn btn-primary" style="padding:10px 15px;">+</button>
                         </div>
-                        <button onclick="previewDoc('presc')" class="btn-accent" style="margin-top:20px; width:100%; justify-content:center;">Aperçu Ordonnance</button>
+                        <button onclick="previewDoc('presc')" class="btn btn-accent" style="margin-top:20px; width:100%; justify-content:center;">Aperçu Ordonnance</button>
                     </div>
                     <div class="card">
                         <h3>Bilan Biologique</h3>
@@ -164,7 +164,7 @@
             <div style="display:flex; gap:15px; align-items:flex-end;">
                 <div style="flex:1;"><label>Du:</label><input type="date" id="revenue-start"></div>
                 <div style="flex:1;"><label>Au:</label><input type="date" id="revenue-end"></div>
-                <button onclick="calculateRevenue()" class="btn-primary">Calculer</button>
+                <button onclick="calculateRevenue()" class="btn btn-primary">Calculer</button>
             </div>
             <div id="revenueResult" style="margin-top:20px; font-size:1.2rem; font-weight:bold; color:var(--primary);"></div>
         </div>
@@ -180,7 +180,7 @@
             <i class="fas fa-lock" style="font-size: 3rem; color: var(--accent); margin-bottom: 20px;"></i>
             <h3>Accès Archives Réservé</h3>
             <input type="password" id="archive-pass-input" placeholder="Entrez le code" style="width: 200px; text-align: center;">
-            <button onclick="unlockContent('archive')" class="btn-primary" style="margin-top: 10px;">Déverrouiller</button>
+            <button onclick="unlockContent('archive')" class="btn btn-primary" style="margin-top: 10px;">Déverrouiller</button>
         </div>
         <div id="archive-real-content" class="real-content">
             <div class="card">
@@ -196,14 +196,14 @@
             <h3>Configuration Cabinet</h3>
             <input id="conf-clinic" placeholder="Clinique"><input id="conf-doc" placeholder="Doctoresse"><input id="conf-spec" placeholder="Spécialité"><input id="conf-addr" placeholder="Adresse"><input id="conf-tel" placeholder="Tel">
             <div style="margin:15px 0; border:2px dashed #eee; padding:20px; text-align:center; border-radius:20px;"><label>Logo: </label><input type="file" onchange="handleLogoUpload(event)"></div>
-            <button onclick="saveClinicConfig()" class="btn-primary" style="width:100%; justify-content:center;">Sauveجارder</button>
+            <button onclick="saveClinicConfig()" class="btn btn-primary" style="width:100%; justify-content:center;">Sauvegarder</button>
         </div>
         <div class="card">
             <h3>Sauvegarde des Données</h3>
-            <p style="font-size: 0.9rem; color: #666;">Téléchargez une copie de vos données pour les restaurer plus tard.</p>
+            <p style="font-size: 0.9rem; color: #666;">Téléchargez une copie de vos بيانات لترميمها لاحقاً.</p>
             <div style="display:flex; gap:15px; margin-top:10px;">
-                <button onclick="exportData()" class="btn-outline" style="flex:1; justify-content:center;"><i class="fas fa-download"></i> Exporter Backup</button>
-                <button onclick="document.getElementById('importFile').click()" class="btn-outline" style="flex:1; justify-content:center;"><i class="fas fa-upload"></i> Importer Backup</button>
+                <button onclick="exportData()" class="btn btn-outline" style="flex:1; justify-content:center;"><i class="fas fa-download"></i> Exporter Backup</button>
+                <button onclick="document.getElementById('importFile').click()" class="btn btn-outline" style="flex:1; justify-content:center;"><i class="fas fa-upload"></i> Importer Backup</button>
                 <input type="file" id="importFile" style="display:none" onchange="importData(event)">
             </div>
         </div>
@@ -215,8 +215,8 @@
         <div style="background:var(--primary); padding:18px 25px; display:flex; justify-content:space-between; color:white;">
             <span style="font-weight:700">Aperçu</span>
             <div style="display:flex; gap:12px;">
-                <button onclick="exportToPDF()" class="btn-accent" style="padding:8px 15px;"><i class="fas fa-file-pdf"></i> PDF</button>
-                <button onclick="window.print()" class="btn-success" style="padding:8px 15px;"><i class="fas fa-print"></i> Imprimer</button>
+                <button onclick="exportToPDF()" class="btn btn-accent" style="padding:8px 15px;"><i class="fas fa-file-pdf"></i> PDF</button>
+                <button onclick="window.print()" class="btn btn-success" style="padding:8px 15px;"><i class="fas fa-print"></i> Imprimer</button>
                 <button onclick="closeModal()" class="btn-danger" style="padding:8px 15px;">X</button>
             </div>
         </div>
@@ -288,7 +288,7 @@
     }
 
     function renderWaiting() { 
-        document.getElementById('waitingListContainer').innerHTML = state.waiting.map(p => `<div class="card" style="display:flex; justify-content:space-between; padding:12px; margin-bottom:8px; border:1px solid #eee; align-items:center;"><span><b>${p.name}</b></span><button onclick="callPatient('${p.id}')" class="btn-primary">Appeler</button></div>`).join('') || "Salle d'attente vide"; 
+        document.getElementById('waitingListContainer').innerHTML = state.waiting.map(p => `<div class="card" style="display:flex; justify-content:space-between; padding:12px; margin-bottom:8px; border:1px solid #eee; align-items:center;"><span><b>${p.name}</b></span><button onclick="callPatient('${p.id}')" class="btn btn-primary">Appeler</button></div>`).join('') || "Salle d'attente vide"; 
     }
 
     function updateStatusUI() {
@@ -403,11 +403,14 @@
     function addQuickNote(t) { document.getElementById('analysisArea').value += (document.getElementById('analysisArea').value ? "\n" : "") + "- " + t; }
     function renderMiniWaiting() { document.getElementById('miniWaitingList').innerHTML = state.waiting.map(p => `<div>${p.name}</div>`).join('') || "Vide"; }
     function renderBilling() { document.getElementById('billingList').innerHTML = state.pendingPayments.map((p, i) => `<div class="card" style="display:flex; justify-content:space-between; align-items:center; border-left:8px solid var(--accent);"><span><b>${p.name}</b></span><button onclick="confirmPayment(${i})" class="btn-success">Valider</button></div>`).join('') || "Vide"; }
+    
+    // --- CORRECTED FUNCTION FOR VALIDER BUTTON ---
     function confirmPayment(idx) { 
         const item = state.pendingPayments.splice(idx, 1)[0];
         db.ref('clinic_v3_new/history').push(item);
-        saveCloud();
+        db.ref('clinic_v3_new/pendingPayments').set(state.pendingPayments); // Directly update the pending list in Firebase
     }
+
     function refreshFinanceUI() { const today = new Date().toISOString().split('T')[0]; const recs = state.history.filter(h => h.dateKey === today); document.getElementById('dailyCount').innerText = recs.length; let sum = recs.reduce((s, r) => s + r.price, 0); document.getElementById('dailySum').innerText = sum + " DA"; document.getElementById('paidHistoryList').innerHTML = recs.map(r => `<tr><td style="padding:12px; border-bottom:1px solid #eee;"><b>${r.name}</b></td><td style="text-align:right;">${r.price} DA</td></tr>`).join(''); }
     function saveClinicConfig() { ['clinic', 'doctor', 'spec', 'address', 'phone'].forEach(k => config[k] = document.getElementById('conf-'+k).value); localStorage.setItem('clinic_config_v5', JSON.stringify(config)); alert("Sauvegardé!"); }
     function handleLogoUpload(e) { const r = new FileReader(); r.onload = () => config.logo = r.result; r.readAsDataURL(e.target.files[0]); }
@@ -425,6 +428,7 @@
 
 </body>
 </html>
+
 
 
 
