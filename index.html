@@ -111,7 +111,7 @@
     <div id="doctor" class="panel">
         <div id="doctor-lock-screen" class="card lock-screen">
             <i class="fas fa-lock" style="font-size: 3rem; color: var(--accent); margin-bottom: 20px;"></i>
-            <h3>Accès Réservé</h3>
+            <h3>Accès Résورvé</h3>
             <input type="password" id="doctor-pass-input" placeholder="Entrez le code" style="width: 200px; text-align: center;">
             <button onclick="unlockContent('doctor')" class="btn-primary" style="margin-top: 10px;">Déverrouiller</button>
         </div>
@@ -199,12 +199,11 @@
             <button onclick="saveClinicConfig()" class="btn-primary" style="width:100%; justify-content:center;">Sauvegarder</button>
         </div>
         <div class="card">
-            <h3>Sauvegarde des Données</h3>
-            <p style="font-size: 0.9rem; color: #666;">Téléchargez une copie de vos بيانات لترميمها لاحقاً.</p>
+            <h3>Sauvegarde & Restauration</h3>
             <div style="display:flex; gap:15px; margin-top:10px;">
-                <button onclick="exportData()" class="btn-outline" style="flex:1; justify-content:center;"><i class="fas fa-download"></i> Exporter Backup</button>
-                <button onclick="document.getElementById('importFile').click()" class="btn-outline" style="flex:1; justify-content:center;"><i class="fas fa-upload"></i> Importer Backup</button>
-                <input type="file" id="importFile" style="display:none" onchange="importData(event)">
+                <button onclick="exportBackup()" class="btn-outline" style="flex:1; justify-content:center;"><i class="fas fa-download"></i> Télécharger Backup</button>
+                <button onclick="document.getElementById('importFile').click()" class="btn-outline" style="flex:1; justify-content:center;"><i class="fas fa-upload"></i> Restaurer Backup</button>
+                <input type="file" id="importFile" style="display:none" onchange="importBackup(event)">
             </div>
         </div>
     </div>
@@ -215,7 +214,7 @@
         <div style="background:var(--primary); padding:18px 25px; display:flex; justify-content:space-between; color:white;">
             <span style="font-weight:700">Aperçu</span>
             <div style="display:flex; gap:12px;">
-                <button onclick="exportToPDF()" class="btn-accent" style="padding:8px 15px;"><i class="fas fa-file-pdf"></i> PDF</button>
+                <button onclick="exportToPDF()" class="btn btn-accent" style="padding:8px 15px;"><i class="fas fa-file-pdf"></i> PDF</button>
                 <button onclick="window.print()" class="btn-success" style="padding:8px 15px;"><i class="fas fa-print"></i> Imprimer</button>
                 <button onclick="closeModal()" class="btn-danger" style="padding:8px 15px;">X</button>
             </div>
@@ -241,7 +240,6 @@
     let config = JSON.parse(localStorage.getItem('clinic_config_v5')) || { clinic: "NUTRITION CLINIC", doctor: "DR. NOM", spec: "NUTRITIONNISTE", address: "ADRESSE", phone: "000000", logo: "" };
     let state = { waiting: [], current: null, currentMeds: [], pendingPayments: [], history: [] };
 
-    // --- REAL-TIME SYNC LOGIC ---
     db.ref('clinic_v3_new').on('value', (snap) => {
         if (snap.exists()) {
             const cloudData = snap.val();
@@ -249,6 +247,13 @@
             state.current = cloudData.current || null;
             state.pendingPayments = cloudData.pendingPayments || [];
             state.history = cloudData.history ? Object.values(cloudData.history) : [];
+            
+            if (cloudData.config) {
+                config = cloudData.config;
+                ['clinic', 'doctor', 'spec', 'address', 'phone'].forEach(k => {
+                    if(document.getElementById('conf-'+k)) document.getElementById('conf-'+k).value = config[k] || "";
+                });
+            }
             updateUI();
         }
     });
@@ -269,6 +274,9 @@
             document.getElementById('docPatientName').innerText = state.current.name;
             document.getElementById('docPatientAgeDisplay').innerText = "Âge: " + state.current.age + " ans";
             calculateVisitCount();
+        } else {
+            document.getElementById('docPatientName').innerText = "Patient : ---";
+            document.getElementById('docPatientAgeDisplay').innerText = "";
         }
     }
 
@@ -344,8 +352,6 @@
         state.pendingPayments.push(visitData);
         state.current = null; state.currentMeds = [];
         document.getElementById('medListDisplay').innerHTML = ''; document.getElementById('analysisArea').value = ''; document.getElementById('poids-input').value = '';
-        document.getElementById('doctor-real-content').style.display = "none";
-        document.getElementById('doctor-lock-screen').style.display = "flex";
         saveCloud();
     }
 
@@ -394,6 +400,11 @@
     function toggleDetails(idx) { const el = document.getElementById(`details-${idx}`); el.style.display = el.style.display === 'none' ? 'block' : 'none'; }
     
     function showPanel(id, el) { 
+        if (id === 'doctor') {
+            document.getElementById('doctor-real-content').style.display = "none";
+            document.getElementById('doctor-lock-screen').style.display = "flex";
+            document.getElementById('doctor-pass-input').value = "";
+        }
         document.querySelectorAll('.panel').forEach(p => p.classList.remove('active')); 
         document.getElementById(id).classList.add('active'); 
         if(el) { document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active')); el.classList.add('active'); }
@@ -403,7 +414,13 @@
 
     function addQuickNote(t) { document.getElementById('analysisArea').value += (document.getElementById('analysisArea').value ? "\n" : "") + "- " + t; }
     function renderMiniWaiting() { document.getElementById('miniWaitingList').innerHTML = state.waiting.map(p => `<div>${p.name}</div>`).join('') || "Vide"; }
-    function renderBilling() { document.getElementById('billingList').innerHTML = state.pendingPayments.map((p, i) => `<div class="card" style="display:flex; justify-content:space-between; align-items:center; border-left:8px solid var(--accent);"><span><b>${p.name}</b></span><button onclick="confirmPayment(${i})" class="btn-success">Valider</button></div>`).join('') || "Vide"; }
+    function renderBilling() { 
+        document.getElementById('billingList').innerHTML = state.pendingPayments.map((p, i) => `
+            <div class="card" style="display:flex; justify-content:space-between; align-items:center; border-left:8px solid var(--accent);">
+                <span><b>${p.name}</b> <span style="margin-left:10px; color:var(--primary); font-weight:bold;">${p.price} DA</span></span>
+                <button onclick="confirmPayment(${i})" class="btn-success">Valider</button>
+            </div>`).join('') || "Vide"; 
+    }
     
     function confirmPayment(idx) { 
         const item = state.pendingPayments[idx];
@@ -414,9 +431,49 @@
     }
 
     function refreshFinanceUI() { const today = new Date().toISOString().split('T')[0]; const recs = state.history.filter(h => h.dateKey === today); document.getElementById('dailyCount').innerText = recs.length; let sum = recs.reduce((s, r) => s + r.price, 0); document.getElementById('dailySum').innerText = sum + " DA"; document.getElementById('paidHistoryList').innerHTML = recs.map(r => `<tr><td style="padding:12px; border-bottom:1px solid #eee;"><b>${r.name}</b></td><td style="text-align:right;">${r.price} DA</td></tr>`).join(''); }
-    function saveClinicConfig() { ['clinic', 'doctor', 'spec', 'address', 'phone'].forEach(k => config[k] = document.getElementById('conf-'+k).value); localStorage.setItem('clinic_config_v5', JSON.stringify(config)); alert("Sauvegardé!"); }
-    function handleLogoUpload(e) { const r = new FileReader(); r.onload = () => config.logo = r.result; r.readAsDataURL(e.target.files[0]); }
+    
+    function saveClinicConfig() { 
+        config = { clinic: document.getElementById('conf-clinic').value, doctor: document.getElementById('conf-doc').value, spec: document.getElementById('conf-spec').value, address: document.getElementById('conf-addr').value, phone: document.getElementById('conf-tel').value, logo: config.logo || "" }; 
+        db.ref('clinic_v3_new/config').set(config).then(() => {
+            localStorage.setItem('clinic_config_v5', JSON.stringify(config)); 
+            alert("Sauvegardé !");
+        });
+    }
+
+    // --- ميزات النسخ الاحتياطي (BACKUP) ---
+    function exportBackup() {
+        db.ref('clinic_v3_new').once('value').then(snap => {
+            const data = snap.val();
+            const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Backup_Nutrition_${new Date().toLocaleDateString()}.json`;
+            a.click();
+        });
+    }
+
+    function importBackup(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const data = JSON.parse(e.target.result);
+                if (confirm("Voulez-vous vraiment écraser les données actuelles par cette sauvegarde ?")) {
+                    db.ref('clinic_v3_new').set(data).then(() => {
+                        alert("Données restaurées avec succès !");
+                        location.reload();
+                    });
+                }
+            } catch (err) { alert("Erreur : Fichier invalide."); }
+        };
+        reader.readAsText(file);
+    }
+
+    function handleLogoUpload(e) { const r = new FileReader(); r.onload = () => { config.logo = r.result; db.ref('clinic_v3_new/config').update({ logo: r.result }); }; r.readAsDataURL(e.target.files[0]); }
     function closeModal() { document.getElementById('previewModal').style.display = "none"; }
+    
     function unlockContent(type) {
         const pass = document.getElementById(type + '-pass-input').value;
         if(pass === "1234") {
@@ -424,8 +481,6 @@
             document.getElementById(type + '-real-content').style.display = "block";
         } else { alert("Code Incorrect !"); }
     }
-    function exportData() { const blob = new Blob([JSON.stringify(state)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `Backup_Nutrition.json`; a.click(); }
-    function importData(event) { const file = event.target.files[0]; const reader = new FileReader(); reader.onload = (e) => { db.ref('clinic_v3_new').set(JSON.parse(e.target.result)); location.reload(); }; reader.readAsText(file); }
 </script>
 
 </body>
