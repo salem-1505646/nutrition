@@ -111,7 +111,7 @@
     <div id="doctor" class="panel">
         <div id="doctor-lock-screen" class="card lock-screen">
             <i class="fas fa-lock" style="font-size: 3rem; color: var(--accent); margin-bottom: 20px;"></i>
-            <h3>Accès Résورvé</h3>
+            <h3>Accès Réservé</h3>
             <input type="password" id="doctor-pass-input" placeholder="Entrez le code" style="width: 200px; text-align: center;">
             <button onclick="unlockContent('doctor')" class="btn-primary" style="margin-top: 10px;">Déverrouiller</button>
         </div>
@@ -160,7 +160,7 @@
 
     <div id="billing" class="panel">
         <div class="card">
-            <h3>Calcul des Revenus</h3>
+            <h3>Calcul des Revenوس</h3>
             <div style="display:flex; gap:15px; align-items:flex-end;">
                 <div style="flex:1;"><label>Du:</label><input type="date" id="revenue-start"></div>
                 <div style="flex:1;"><label>Au:</label><input type="date" id="revenue-end"></div>
@@ -198,6 +198,14 @@
             <div style="margin:15px 0; border:2px dashed #eee; padding:20px; text-align:center; border-radius:20px;"><label>Logo: </label><input type="file" onchange="handleLogoUpload(event)"></div>
             <button onclick="saveClinicConfig()" class="btn-primary" style="width:100%; justify-content:center;">Sauvegarder</button>
         </div>
+
+        <div class="card">
+            <h3>Sécurité (Changer le mot de passe)</h3>
+            <input type="password" id="current-pwd-input" placeholder="Ancien Code">
+            <input type="password" id="new-pwd-input" placeholder="Nouveau Code">
+            <button onclick="updateAppPassword()" class="btn-accent" style="width:100%; justify-content:center;">Changer le code</button>
+        </div>
+
         <div class="card">
             <h3>Sauvegarde & Restauration</h3>
             <div style="display:flex; gap:15px; margin-top:10px;">
@@ -239,6 +247,7 @@
 
     let config = JSON.parse(localStorage.getItem('clinic_config_v5')) || { clinic: "NUTRITION CLINIC", doctor: "DR. NOM", spec: "NUTRITIONNISTE", address: "ADRESSE", phone: "000000", logo: "" };
     let state = { waiting: [], current: null, currentMeds: [], pendingPayments: [], history: [] };
+    let appSettings = { password: "1234" }; // كلمة المرور الافتراضية
 
     db.ref('clinic_v3_new').on('value', (snap) => {
         if (snap.exists()) {
@@ -253,6 +262,9 @@
                 ['clinic', 'doctor', 'spec', 'address', 'phone'].forEach(k => {
                     if(document.getElementById('conf-'+k)) document.getElementById('conf-'+k).value = config[k] || "";
                 });
+            }
+            if (cloudData.settings) {
+                appSettings = cloudData.settings;
             }
             updateUI();
         }
@@ -352,6 +364,10 @@
         state.pendingPayments.push(visitData);
         state.current = null; state.currentMeds = [];
         document.getElementById('medListDisplay').innerHTML = ''; document.getElementById('analysisArea').value = ''; document.getElementById('poids-input').value = '';
+        
+        // تصفير خانات الأدوية
+        ['m-name', 'm-dose', 'm-qty', 'm-freq'].forEach(id => document.getElementById(id).value = '');
+        
         saveCloud();
     }
 
@@ -440,7 +456,19 @@
         });
     }
 
-    // --- ميزات النسخ الاحتياطي (BACKUP) ---
+    function updateAppPassword() {
+        const oldP = document.getElementById('current-pwd-input').value;
+        const newP = document.getElementById('new-pwd-input').value;
+        if (oldP !== appSettings.password) return alert("Ancien code incorrect.");
+        if (newP.length < 4) return alert("Le code doit avoir 4 chiffres.");
+        appSettings.password = newP;
+        db.ref('clinic_v3_new/settings').set(appSettings).then(() => {
+            alert("Code modifié !");
+            document.getElementById('current-pwd-input').value = "";
+            document.getElementById('new-pwd-input').value = "";
+        });
+    }
+
     function exportBackup() {
         db.ref('clinic_v3_new').once('value').then(snap => {
             const data = snap.val();
@@ -476,7 +504,7 @@
     
     function unlockContent(type) {
         const pass = document.getElementById(type + '-pass-input').value;
-        if(pass === "1234") {
+        if(pass === appSettings.password) {
             document.getElementById(type + '-lock-screen').style.display = "none";
             document.getElementById(type + '-real-content').style.display = "block";
         } else { alert("Code Incorrect !"); }
