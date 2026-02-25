@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MédiSoft Nutrition Pro - New Cloud Sync</title>
+    <title>MédiSoft Nutrition Pro - Aesthetic Edition</title>
     
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-    
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;600;700&family=Playfair+Display:ital,wght@0,700;1,500&family=Cinzel:wght@600&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -102,7 +102,7 @@
                 <input id="p-name" placeholder="Nom Complet">
                 <input id="p-age" type="number" placeholder="Âge">
                 <input id="p-phone" placeholder="Téléphone">
-                <button onclick="addPatient()" class="btn btn-primary">Enregistrer</button>
+                <button onclick="addPatient()" class="btn-primary">Enregistrer</button>
             </div>
         </div>
         <div class="card"><h3>File d'attente</h3><div id="waitingListContainer"></div></div>
@@ -113,7 +113,7 @@
             <i class="fas fa-lock" style="font-size: 3rem; color: var(--accent); margin-bottom: 20px;"></i>
             <h3>Accès Réservé</h3>
             <input type="password" id="doctor-pass-input" placeholder="Entrez le code" style="width: 200px; text-align: center;">
-            <button onclick="unlockContent('doctor')" class="btn btn-primary" style="margin-top: 10px;">Déverrouiller</button>
+            <button onclick="unlockContent('doctor')" class="btn-primary" style="margin-top: 10px;">Déverrouiller</button>
         </div>
 
         <div id="doctor-real-content" class="real-content">
@@ -196,7 +196,7 @@
             <h3>Configuration Cabinet</h3>
             <input id="conf-clinic" placeholder="Clinique"><input id="conf-doc" placeholder="Doctoresse"><input id="conf-spec" placeholder="Spécialité"><input id="conf-addr" placeholder="Adresse"><input id="conf-tel" placeholder="Tel">
             <div style="margin:15px 0; border:2px dashed #eee; padding:20px; text-align:center; border-radius:20px;"><label>Logo: </label><input type="file" onchange="handleLogoUpload(event)"></div>
-            <button onclick="saveClinicConfig()" class="btn-primary" style="width:100%; justify-content:center;">Sauvegarder</button>
+            <button onclick="saveClinicConfig()" class="btn-primary" style="width:100%; justify-content:center;">Sauveجارder</button>
         </div>
         <div class="card">
             <h3>Sauvegarde des Données</h3>
@@ -225,7 +225,7 @@
 </div>
 
 <script>
-    // --- Configuration Firebase (New Database Path: clinic_v3_new) ---
+    // --- FIREBASE CONFIGURATION ---
     const firebaseConfig = {
         apiKey: "AIzaSyDBYw9gZW-8uvZo6s3DGJhdWEInyPxvNn8",
         authDomain: "myclinic-c1ae8.firebaseapp.com",
@@ -241,7 +241,7 @@
     let config = JSON.parse(localStorage.getItem('clinic_config_v5')) || { clinic: "NUTRITION CLINIC", doctor: "DR. NOM", spec: "NUTRITIONNISTE", address: "ADRESSE", phone: "000000", logo: "" };
     let state = { waiting: [], current: null, currentMeds: [], pendingPayments: [], history: [] };
 
-    // Real-time listener for the new path 'clinic_v3_new'
+    // --- CLOUD SYNC LOGIC ---
     db.ref('clinic_v3_new').on('value', (snap) => {
         if (snap.exists()) {
             const cloudData = snap.val();
@@ -282,72 +282,26 @@
     function addPatient() {
         const n = document.getElementById('p-name'), a = document.getElementById('p-age'), ph = document.getElementById('p-phone');
         if(!n.value) return;
-        if(!state.waiting) state.waiting = [];
-        state.waiting.push({ id: Date.now(), name: n.value.trim(), age: a.value || "N/A", phone: ph.value || "N/A" });
+        state.waiting.push({ id: Date.now().toString(), name: n.value.trim(), age: a.value || "N/A", phone: ph.value || "N/A" });
         saveCloud();
         n.value = ''; a.value = ''; ph.value = '';
     }
 
-    function callPatient(id) {
-        if(state.current) return alert("Terminez d'abord la consultation en cours.");
-        const idx = state.waiting.findIndex(p => p.id === id);
-        state.current = state.waiting.splice(idx, 1)[0];
-        saveCloud();
-    }
-
-    function finishConsult() {
-        if(!state.current) return;
-        const now = new Date();
-        const visitData = { 
-            ...state.current, 
-            meds: [...state.currentMeds], 
-            analysis: document.getElementById('analysisArea').value, 
-            poids: parseFloat(document.getElementById('poids-input').value || 0), 
-            price: parseFloat(document.getElementById('consult-price').value || 0), 
-            timestamp: now.getTime(), 
-            dateKey: now.toISOString().split('T')[0] 
-        };
-        
-        if(!state.pendingPayments) state.pendingPayments = [];
-        state.pendingPayments.push(visitData);
-        state.current = null;
-        state.currentMeds = [];
-        
-        document.getElementById('medListDisplay').innerHTML = ''; 
-        document.getElementById('analysisArea').value = ''; 
-        document.getElementById('poids-input').value = '';
-        document.getElementById('doctor-real-content').style.display = "none";
-        document.getElementById('doctor-lock-screen').style.display = "flex";
-        
-        saveCloud();
-    }
-
-    function confirmPayment(idx) {
-        const item = state.pendingPayments.splice(idx, 1)[0];
-        db.ref('clinic_v3_new/history').push(item); 
-        saveCloud();
-    }
-
-    function unlockContent(type) {
-        const pass = document.getElementById(type + '-pass-input').value;
-        if(pass === "1234") {
-            document.getElementById(type + '-lock-screen').style.display = "none";
-            document.getElementById(type + '-real-content').style.display = "block";
-        } else { alert("Code Incorrect !"); }
-    }
-
-    function renderWaiting() {
-        document.getElementById('waitingListContainer').innerHTML = (state.waiting || []).map(p => `
-            <div class="card" style="display:flex; justify-content:space-between; padding:12px; margin-bottom:8px; border:1px solid #eee; align-items:center;">
-                <span><b>${p.name}</b></span>
-                <button onclick="callPatient(${p.id})" class="btn-primary">Appeler</button>
-            </div>`).join('') || "Salle d'attente vide";
+    function renderWaiting() { 
+        document.getElementById('waitingListContainer').innerHTML = state.waiting.map(p => `<div class="card" style="display:flex; justify-content:space-between; padding:12px; margin-bottom:8px; border:1px solid #eee; align-items:center;"><span><b>${p.name}</b></span><button onclick="callPatient('${p.id}')" class="btn-primary">Appeler</button></div>`).join('') || "Salle d'attente vide"; 
     }
 
     function updateStatusUI() {
         const rS = document.getElementById('receptionStatus'), rT = document.getElementById('receptionStatusText');
         if(state.current) { rS.className="status-monitor status-busy"; rT.innerHTML=`Doctoresse : <b>Occupée</b> (${state.current.name})`; }
         else { rS.className="status-monitor status-free"; rT.innerText="Doctoresse : Disponible"; }
+    }
+
+    function callPatient(id) {
+        if(state.current) return alert("Terminez d'abord.");
+        const idx = state.waiting.findIndex(p => p.id === id);
+        state.current = state.waiting.splice(idx, 1)[0];
+        saveCloud();
     }
 
     function calculateVisitCount() {
@@ -371,13 +325,30 @@
     function addMedToList() {
         const n = document.getElementById('m-name').value; if(!n) return;
         state.currentMeds.push({ name: n, dose: document.getElementById('m-dose').value, qty: document.getElementById('m-qty').value, freq: document.getElementById('m-freq').value });
-        renderMedsUI(); 
-        ['m-name', 'm-dose', 'm-qty', 'm-freq'].forEach(i => document.getElementById(i).value = '');
+        renderMeds(); ['m-name', 'm-dose', 'm-qty', 'm-freq'].forEach(i => document.getElementById(i).value = '');
     }
 
-    function renderMedsUI() { document.getElementById('medListDisplay').innerHTML = state.currentMeds.map((m, i) => `<div style="background:#f9fbf9; padding:10px; border-radius:15px; display:flex; justify-content:space-between; margin-bottom:5px;"><b>${m.name}</b><i class="fas fa-trash-can" style="color:var(--danger); cursor:pointer;" onclick="state.currentMeds.splice(${i},1);renderMedsUI()"></i></div>`).join(''); }
+    function renderMeds() { document.getElementById('medListDisplay').innerHTML = state.currentMeds.map((m, i) => `<div style="background:#f9fbf9; padding:10px; border-radius:15px; display:flex; justify-content:space-between; margin-bottom:5px;"><b>${m.name}</b><i class="fas fa-trash-can" style="color:var(--danger); cursor:pointer;" onclick="state.currentMeds.splice(${i},1);renderMeds()"></i></div>`).join(''); }
 
-    function updateCaisseBadge() { const b = document.getElementById('caisseBadge'); const c = (state.pendingPayments || []).length; b.innerText = c; b.style.display = c > 0 ? "block" : "none"; }
+    function finishConsult() {
+        if(!state.current) return;
+        const now = new Date();
+        const visitData = { 
+            ...state.current, meds: [...state.currentMeds], 
+            analysis: document.getElementById('analysisArea').value, 
+            poids: parseFloat(document.getElementById('poids-input').value || 0), 
+            price: parseFloat(document.getElementById('consult-price').value || 0), 
+            timestamp: now.getTime(), dateKey: now.toISOString().split('T')[0] 
+        };
+        state.pendingPayments.push(visitData);
+        state.current = null; state.currentMeds = [];
+        document.getElementById('medListDisplay').innerHTML = ''; document.getElementById('analysisArea').value = ''; document.getElementById('poids-input').value = '';
+        document.getElementById('doctor-real-content').style.display = "none";
+        document.getElementById('doctor-lock-screen').style.display = "flex";
+        saveCloud();
+    }
+
+    function updateCaisseBadge() { const b = document.getElementById('caisseBadge'); const c = state.pendingPayments.length; b.innerText = c; b.style.display = c > 0 ? "block" : "none"; }
 
     function calculateRevenue() {
         const s = document.getElementById('revenue-start').value, e = document.getElementById('revenue-end').value;
@@ -415,7 +386,7 @@
         document.getElementById('archiveResults').innerHTML = h.map((h, i) => `
             <div class="card" style="padding:15px; border-left:8px solid var(--primary); margin-bottom:10px;">
                 <div style="display:flex; justify-content:space-between; align-items:center;"><div><b>${h.name}</b><br><small>${h.dateKey}</small></div><i class="fas fa-eye" style="color:var(--accent); cursor:pointer; font-size:1.2rem;" onclick="toggleDetails(${i})"></i></div>
-                <div id="details-${i}" style="display:none; margin-top:15px; font-size:0.9rem;"><p><b>Téléphone:</b> ${h.phone || 'N/A'}</p><p><b>Poids:</b> ${h.poids} Kg</p><p><b>Ordonnance:</b><br>${h.meds ? h.meds.map(m => `- ${m.name}`).join('<br>') : 'Vide'}</p><p><b>Analyses:</b><br>${h.analysis ? h.analysis.replace(/\n/g, '<br>') : 'Vide'}</p></div>
+                <div id="details-${i}" style="display:none; margin-top:15px; font-size:0.9rem;"><p><b>Téléphone:</b> ${h.phone || 'N/A'}</p><p><b>Poids:</b> ${h.poids} Kg</p><p><b>Ordonnance:</b><br>${h.meds.map(m => `- ${m.name}`).join('<br>') || 'Vide'}</p><p><b>Analyses:</b><br>${h.analysis.replace(/\n/g, '<br>') || 'Vide'}</p></div>
             </div>`).join('');
     }
 
@@ -425,22 +396,35 @@
         document.querySelectorAll('.panel').forEach(p => p.classList.remove('active')); 
         document.getElementById(id).classList.add('active'); 
         if(el) { document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active')); el.classList.add('active'); }
-        if(id !== 'doctor') { document.getElementById('doctor-real-content').style.display = "none"; document.getElementById('doctor-lock-screen').style.display = "flex"; }
-        if(id !== 'archive') { document.getElementById('archive-real-content').style.display = "none"; document.getElementById('archive-lock-screen').style.display = "flex"; }
+        if(id === 'billing') { renderBilling(); refreshFinanceUI(); } 
+        if(id === 'doctor') renderMiniWaiting(); 
     }
 
     function addQuickNote(t) { document.getElementById('analysisArea').value += (document.getElementById('analysisArea').value ? "\n" : "") + "- " + t; }
-    function renderMiniWaiting() { document.getElementById('miniWaitingList').innerHTML = (state.waiting || []).map(p => `<div>${p.name}</div>`).join('') || "Vide"; }
-    function renderBilling() { document.getElementById('billingList').innerHTML = (state.pendingPayments || []).map((p, i) => `<div class="card" style="display:flex; justify-content:space-between; align-items:center; border-left:8px solid var(--accent);"><span><b>${p.name}</b></span><button onclick="confirmPayment(${i})" class="btn-success">Valider</button></div>`).join('') || "Vide"; }
+    function renderMiniWaiting() { document.getElementById('miniWaitingList').innerHTML = state.waiting.map(p => `<div>${p.name}</div>`).join('') || "Vide"; }
+    function renderBilling() { document.getElementById('billingList').innerHTML = state.pendingPayments.map((p, i) => `<div class="card" style="display:flex; justify-content:space-between; align-items:center; border-left:8px solid var(--accent);"><span><b>${p.name}</b></span><button onclick="confirmPayment(${i})" class="btn-success">Valider</button></div>`).join('') || "Vide"; }
+    function confirmPayment(idx) { 
+        const item = state.pendingPayments.splice(idx, 1)[0];
+        db.ref('clinic_v3_new/history').push(item);
+        saveCloud();
+    }
     function refreshFinanceUI() { const today = new Date().toISOString().split('T')[0]; const recs = state.history.filter(h => h.dateKey === today); document.getElementById('dailyCount').innerText = recs.length; let sum = recs.reduce((s, r) => s + r.price, 0); document.getElementById('dailySum').innerText = sum + " DA"; document.getElementById('paidHistoryList').innerHTML = recs.map(r => `<tr><td style="padding:12px; border-bottom:1px solid #eee;"><b>${r.name}</b></td><td style="text-align:right;">${r.price} DA</td></tr>`).join(''); }
     function saveClinicConfig() { ['clinic', 'doctor', 'spec', 'address', 'phone'].forEach(k => config[k] = document.getElementById('conf-'+k).value); localStorage.setItem('clinic_config_v5', JSON.stringify(config)); alert("Sauvegardé!"); }
     function handleLogoUpload(e) { const r = new FileReader(); r.onload = () => config.logo = r.result; r.readAsDataURL(e.target.files[0]); }
     function closeModal() { document.getElementById('previewModal').style.display = "none"; }
-    function exportData() { const blob = new Blob([JSON.stringify(state)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `Backup_Cloud.json`; a.click(); }
+    function unlockContent(type) {
+        const pass = document.getElementById(type + '-pass-input').value;
+        if(pass === "1234") {
+            document.getElementById(type + '-lock-screen').style.display = "none";
+            document.getElementById(type + '-real-content').style.display = "block";
+        } else { alert("Code Incorrect !"); }
+    }
+    function exportData() { const blob = new Blob([JSON.stringify(state)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `Backup_Nutrition.json`; a.click(); }
     function importData(event) { const file = event.target.files[0]; const reader = new FileReader(); reader.onload = (e) => { db.ref('clinic_v3_new').set(JSON.parse(e.target.result)); location.reload(); }; reader.readAsText(file); }
 </script>
 
 </body>
 </html>
+
 
 
